@@ -1,0 +1,74 @@
+# Plotting Configuration File
+# ===========================
+
+title = "ratio_plot"  # Title or description of plots being produced
+outdir = "./plots"    # Output directory (no trailing /)
+ext = "pdf"           # File extension, e.g. "pdf", "png", "jpg", etc.
+
+
+# Global plotting parameters
+logy = false   # Set y-axis to logorithmic scale
+norm = false   # Normalize the histograms to unity
+
+[author]
+    name = "Flurina Bruno"           # Author name
+    email = "joey.carter@cern.ch"  # Author e-mail
+
+[canvas]
+    w = 800  # Canvas wdth; typically 800
+    h = 800  # Canvas height; typically 600 or 800
+
+[legend]
+    x = 0.78  # Legend x position
+    y = 0.65  # Legend y position
+
+
+# A list of labels to draw on the canvas
+[[label]]
+    text = "H #rightarrow ZZ* #rightarrow 4l"
+    x = 0.7
+    y = 0.85
+
+
+# File 0: Denominator in ratio plot
+[[file]]
+    name = "mc15_13TeV.MCFMPythia8EvtGen_gg_ZZ_llll.root"  # Path to .root file
+    tree = "tree_incl_all"                                 # Name of TTree object
+    label = "MCFM"                                         # Label in legend
+    color = "#000000"                                      # Line color hex code
+    scale = 4.2                                            # Scale factor
+
+# File 1: Numerator in ratio plot
+[[file]]
+    name = "mc15_13TeV.Sherpa_CT10_ggllllNoHiggs.root"
+    tree = "tree_incl_all"
+    label = "Sherpa"
+    color = "#1F77B4"
+
+
+# Plot 0
+[[plot]]
+    name = "higgs_eta_fidDres_truth"  # Variable (i.e. name of branch in TTree) to plot
+    nbins = 20                        # Number of bins
+    xmin = -8                         # Minimum x-axis value
+    xmax = 8                          # Maximum x-axis value
+    label = "#eta_{4l}"               # x-axis label
+    cuts = "weight"                   # Cut string (with branch names and logical operators)
+
+# Plot 1
+[[plot]]
+    name = "higgs_m_fidDres_truth"
+    nbins = 20
+    xmin = 0
+    xmax = 1000
+    label = "m_{4l} [GeV]"  # Include units in []
+    cuts = "weight"
+
+# Plot 2
+[[plot]]
+    name = "higgs_pt_fidDres_truth"
+    nbins = 20
+    xmin = 0
+    xmax = 250
+    label = "p_{T,4l} [GeV]"  # Include units in []
+    cuts = "weight"
