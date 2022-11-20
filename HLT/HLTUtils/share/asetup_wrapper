@@ -1,0 +1,131 @@
+#!/bin/bash
+# Copyright (C) 2022 Komeilkma for the benefit of the ATLAS collaboration
+# Wrapper to provide asetup environemnt to any command
+#
+
+if [ $# -lt 1 -o "$1" == "-h" ]; then
+cat <<EOF
+Syntax: asetup_wrapper CMD [ARGS]
+
+Will run 'asetup \$ASETUP_ARGS' before executing CMD with optional ARGS.
+- CORAL_AUTH_PATH, CORAL_DBLOOKUP_PATH are protected from modification
+
+Required environment: 
+   AtlasSetup     : location of AtlasSetup installation
+   ASETUP_ARGS    : arguments passed to asetup
+Optional environment: 
+   ASETUP_PRELOAD       : Value to set for LD_PRELOAD after asetup has been run
+   ASETUP_EXTRA_SW_PATH : Extra build area to prepend (i.e. the InstallArea directory)
+   ASETUP_VERBOSE       : Print environment before/after asetup
+EOF
+    exit 1
+fi
+
+cmd=$1
+shift
+args="$*"
+
+LOG='+++ asetup_wrapper:'
+
+# Not provided by default in partition
+export PATH=${PATH}:/bin:/usr/bin
+
+reverse_paths()
+{
+    result=""
+    for p in `echo ${1} | tr ':' ' '`; do
+        result="${p} ${result}"
+    done
+    echo $result
+}
+
+update_paths()
+{
+    if [ ! -z "${_EXTRA_SW_PATH}" ]; then
+	    for dir in `reverse_paths ${_EXTRA_SW_PATH}`; do
+	        if [ -d ${dir} ]; then
+	            export PATH=${dir}/${BINARY_TAG}/share/bin:${dir}/${BINARY_TAG}/bin:${PATH}
+	            export LD_LIBRARY_PATH=${dir}/${BINARY_TAG}/lib:${LD_LIBRARY_PATH}
+	            export PYTHONPATH=${dir}/${BINARY_TAG}/python:${PYTHONPATH}
+	            export JOBOPTSEARCHPATH=${dir}/${BINARY_TAG}/jobOptions:${JOBOPTSEARCHPATH}
+	            export DATAPATH=${dir}/${BINARY_TAG}/share:${DATAPATH}
+                export CALIBPATH=${dir}/${BINARY_TAG}/share:${CALIBPATH}
+	            export XMLPATH=${dir}/${BINARY_TAG}/XML:${XMLPATH}
+	        else
+	            echo "$LOG WARNING: directory ${dir} does not exist !"
+	        fi
+            echo "$LOG Using ASETUP_EXTRA_SW_PATH=$_EXTRA_SW_PATH:"
+            printenv | egrep ^PATH\|^LD_LIBRARY_PATH\|^PYTHONPATH\|^JOBOPTSEARCHPATH\|^DATAPATH\|^CALIBPATH\|^XMLPATH
+	    done
+    fi
+}
+
+if [ ! -z "${ASETUP_VERBOSE}" ]; then
+    echo "================================================================================"
+    echo "$LOG Environment delivered to asetup_wrapper script:"
+    printenv | sort
+    echo "================================================================================"
+fi
+
+# Protect a few environment variables if they are set
+protect_env=`printenv | egrep ^CORAL_AUTH_PATH\|^CORAL_DBLOOKUP_PATH`
+
+if [ ! -z "${protect_env}" ]; then
+    echo "$LOG Will RESTORE the following variables after running asetup:"
+    echo "$protect_env"
+fi
+
+if [ ! -e ${AtlasSetup}/scripts/asetup.sh ]; then
+    echo "$LOG Cannot find asetup. Make sure \$AtlasSetup is set correctly."
+    exit 1
+fi
+
+if [ -z "${ASETUP_ARGS}" ]; then
+    echo "$LOG No asetup tags given. Please set \$ASETUP_ARGS."
+    exit 1
+fi
+
+# Need to protect those as asetup overwrites ASETUP_* env vars
+_PRELOAD="${ASETUP_PRELOAD}"
+_VERBOSE="${ASETUP_VERBOSE}"
+_EXTRA_SW_PATH="${ASETUP_EXTRA_SW_PATH}"
+# Need to protect input parameters since asetup overwrites cmd
+_cmd=${cmd}
+_args=${args}
+
+echo "$LOG Executing asetup ${ASETUP_ARGS}"
+source ${AtlasSetup}/scripts/asetup.sh --input=None ${ASETUP_ARGS}
+
+if [ $? -ne 0 ]; then
+    exit $?
+fi
+
+if [ ! -z "${_PRELOAD}" ]; then
+    export LD_PRELOAD=${_PRELOAD}
+    echo "$LOG Setting LD_PRELOAD=${_PRELOAD}"
+fi
+
+# Restore protected variables
+set -o allexport
+eval $protect_env
+set +o allexport
+
+# Restore input parameters
+cmd=${_cmd}
+args=${_args}
+
+# Now add any extra directory if specified
+update_paths
+
+if [ ! -z "${_VERBOSE}" ]; then
+    echo "================================================================================"
+    echo "$LOG Environment before calling 'exec $cmd $args'"
+    printenv | sort
+    echo "================================================================================"
+fi
+
+unset _PRELOAD _VERBOSE
+unset _cmd _args
+
+echo "$LOG exec $cmd $args"
+exec $cmd $args
