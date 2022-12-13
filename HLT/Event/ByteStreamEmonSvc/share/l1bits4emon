@@ -1,0 +1,20 @@
+#!/usr/bin/env python
+import sys
+
+def l1bits(bits):
+    result = 0L
+    for i in bits:
+        result |= 1L << i
+
+    print "Full: 0x%x" % result
+
+    mask = (2**64-1)
+    print '[',"0x%x" % (result & mask),',',
+    print "0x%x" % ((result >> 64) & mask),',',
+    print "0x%x" % ((result >> 128) & mask),',',
+    print "0x%x" % ((result >> 192) & mask),']'
+    
+
+if __name__ == '__main__':
+    l1bits(map(int,sys.argv[1:]))
+        
